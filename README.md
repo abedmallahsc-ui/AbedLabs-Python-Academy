@@ -88,7 +88,7 @@ The first successful activation binds that license to the browser's device token
 
 ### 4. License management
 
-The admin page lists licenses, lets administrators change a license between active, suspended, and revoked, and can reset a device binding. A suspended or revoked license cannot pass device verification. Resetting the device lets the customer activate again. Customers do not have a self-service transfer feature.
+The admin page lists licenses, lets administrators change a license between active, suspended, and revoked, and can reset a device binding. Revoked licenses can be permanently deleted from the dashboard after confirmation; active and suspended licenses cannot be deleted. A suspended or revoked license cannot pass device verification. Resetting the device lets the customer activate again. Customers do not have a self-service transfer feature.
 
 ### 5. Local development
 

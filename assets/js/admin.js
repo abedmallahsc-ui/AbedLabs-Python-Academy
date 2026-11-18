@@ -153,6 +153,31 @@ function createLicenseCard(license) {
   });
   card.append(document.createTextNode(" "), resetButton);
 
+  if (license.status === "revoked") {
+    const deleteButton = document.createElement("button");
+    deleteButton.className = "ghost";
+    deleteButton.type = "button";
+    deleteButton.textContent = "Delete license";
+    deleteButton.addEventListener("click", async () => {
+      if (
+        !confirm(
+          "Permanently delete this revoked license? This cannot be undone.",
+        )
+      ) {
+        return;
+      }
+      try {
+        await call("/api/admin/licenses", "DELETE", {
+          licenseId: license.id,
+        });
+        await refresh();
+      } catch (error) {
+        showMessage(error.message);
+      }
+    });
+    card.append(document.createTextNode(" "), deleteButton);
+  }
+
   return card;
 }
 

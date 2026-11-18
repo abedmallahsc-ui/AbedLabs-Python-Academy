@@ -56,6 +56,24 @@ export default async function handler(req, res) {
       return json(res, 200, { license: rows[0] });
     }
 
+    if (req.method === "DELETE") {
+      const id = String(req.body?.licenseId || "");
+      if (!/^[0-9a-f-]{36}$/i.test(id)) {
+        return json(res, 400, { error: "A valid license ID is required." });
+      }
+
+      const rows = await db(
+        `licenses?id=eq.${encodeURIComponent(id)}&status=eq.revoked&select=id`,
+        { method: "DELETE" },
+      );
+      if (!rows.length) {
+        return json(res, 409, {
+          error: "Only revoked licenses can be deleted. Refresh the list and try again.",
+        });
+      }
+      return json(res, 200, { ok: true });
+    }
+
     return json(res, 405, { error: "Method not allowed." });
   } catch (e) {
     console.error(
