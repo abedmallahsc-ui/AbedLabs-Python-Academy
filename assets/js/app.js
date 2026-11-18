@@ -1,19 +1,22 @@
 import { courseUnits, lessons } from "./lessons.js";
 import { advancedLessons } from "./advanced-lessons.js";
 import {
+  buildLessonExercises,
   buildLessonPredictions,
   buildLessonQuizzes,
 } from "./assessments.js";
+import { renderCodeExplanation } from "./code-explanations.js";
 import { lessonGuides } from "./lesson-guides.js";
 import { api } from "./api.js";
-const allLessons = [
-  ...lessons.map((lesson) => ({
+const allLessons = [...lessons, ...advancedLessons].map((lesson) => {
+  const guide = lessonGuides[lesson.number];
+  return {
     ...lesson,
-    quizzes: buildLessonQuizzes(lesson),
+    exercises: buildLessonExercises(lesson, guide),
+    quizzes: buildLessonQuizzes(lesson, guide),
     predictProblems: buildLessonPredictions(lesson),
-  })),
-  ...advancedLessons,
-];
+  };
+});
 const $ = (id) => document.getElementById(id);
 const DEVICE_TOKEN = "abed_academy_device_token";
 let token = localStorage.getItem(DEVICE_TOKEN);
@@ -102,7 +105,7 @@ function renderSections(sections) {
                   <pre><code>${escapeHtml(section.code)}</code></pre>
                   <button class="ghost run-example" type="button" data-example="${index}">Try this example</button>
                   <button class="ghost explain-example" type="button" data-example="${index}">Explain this code</button>
-                  <ol class="code-explanation hidden" data-explanation="${index}"></ol>
+                  <div class="code-explanation hidden" data-explanation="${index}"></div>
                 </div>`
               : ""
           }
@@ -157,16 +160,17 @@ function renderExercises(exercises) {
             <span class="eyebrow">CHALLENGE ${String(index + 1).padStart(2, "0")}</span>
             <h3>${escapeHtml(exercise.title)}</h3>
           </div>
+          <p><strong>Objective:</strong> ${escapeHtml(exercise.objective)}</p>
           <p>${escapeHtml(exercise.task)}</p>
           <details>
             <summary>Show a hint</summary>
             <p>${escapeHtml(exercise.hint)}</p>
           </details>
           <details>
-            <summary>View one possible solution</summary>
+            <summary>${exercise.referenceExample ? "View a worked example" : "View one possible solution"}</summary>
             <pre><code>${escapeHtml(exercise.solution)}</code></pre>
             <button class="ghost explain-solution" type="button" data-exercise="${index}">Explain this code</button>
-            <ol class="code-explanation hidden" data-solution-explanation="${index}"></ol>
+            <div class="code-explanation hidden" data-solution-explanation="${index}"></div>
           </details>
           <button class="ghost try-exercise" type="button" data-exercise="${index}">Load starter in editor</button>
         </article>`,
@@ -179,11 +183,11 @@ function renderExercises(exercises) {
       const explanation = document.querySelector(
         `[data-solution-explanation="${index}"]`,
       );
-      explanation.innerHTML = explainCode(exercises[index].solution);
-      explanation.classList.toggle("hidden");
-      button.textContent = explanation.classList.contains("hidden")
-        ? "Explain this code"
-        : "Hide code explanation";
+      toggleCodeExplanation(
+        button,
+        explanation,
+        exercises[index].solution,
+      );
     });
   });
 
@@ -245,46 +249,6 @@ function renderQuizzes(quizzes) {
     });
   });
 }
-function explainLine(line) {
-  const text = line.trim();
-  if (!text) return "Blank line: separates ideas for readability.";
-  if (text.startsWith("#"))
-    return "Comment: Python ignores this note when it runs the program.";
-  if (/^(from .+ import |import )/.test(text))
-    return "Import: makes a module or selected names available to this file.";
-  if (/^@/.test(text))
-    return "Decorator: wraps or modifies the function or class defined immediately below.";
-  if (/^class /.test(text))
-    return "Class definition: introduces a blueprint for creating objects.";
-  if (/^def /.test(text))
-    return "Function definition: names reusable behavior and declares its parameters.";
-  if (/^(if |elif |else:|try:|except\b|finally:|with |for |while )/.test(text))
-    return "Control-flow statement: determines which indented block runs and when.";
-  if (/^return\b/.test(text))
-    return "Return: sends a value back to the caller and ends this function call.";
-  if (/^yield\b/.test(text))
-    return "Yield: produces a value and pauses this generator until the next request.";
-  if (/^raise\b/.test(text))
-    return "Raise: signals an exception so this operation cannot continue normally.";
-  if (/^print\(/.test(text))
-    return "Output: evaluates the arguments and displays their values.";
-  if (/^assert\b/.test(text))
-    return "Assertion: checks an expectation and raises AssertionError if it is false.";
-  if (/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*\s*(?:\+=|-=|\*=|\/=|=)/.test(text))
-    return "Assignment: evaluates the expression on the right and stores the result under the name on the left.";
-  if (/^[A-Za-z_]\w*\(.*\)$/.test(text))
-    return "Function or method call: runs the named operation with the values inside its parentheses.";
-  return "Python statement: inspect its names, operators, and punctuation to understand this step.";
-}
-function explainCode(code) {
-  return code
-    .split("\n")
-    .map(
-      (line) =>
-        `<li><code>${escapeHtml(line || " ")}</code><span>${escapeHtml(explainLine(line))}</span></li>`,
-    )
-    .join("");
-}
 function renderPredictions(problems) {
   $("prediction-list").innerHTML = problems
     .map(
@@ -295,7 +259,7 @@ function renderPredictions(problems) {
           <p>Predict the exact output before trying the code in the editor.</p>
           <pre><code>${escapeHtml(problem.code)}</code></pre>
           <button class="ghost explain-prediction" type="button" data-prediction="${index}">Explain this code</button>
-          <ol class="code-explanation hidden" data-prediction-explanation="${index}">${explainCode(problem.code)}</ol>
+          <div class="code-explanation hidden" data-prediction-explanation="${index}"></div>
           <details>
             <summary>${problem.output ? "Reveal the expected output" : "How to check your prediction"}</summary>
             <pre>${escapeHtml(problem.output || "Load this snippet in the practice editor, provide input if requested, and run it to see the exact output.")}</pre>
@@ -309,13 +273,11 @@ function renderPredictions(problems) {
 
   document.querySelectorAll(".explain-prediction").forEach((button) => {
     button.addEventListener("click", () => {
+      const problem = problems[Number(button.dataset.prediction)];
       const explanation = document.querySelector(
         `[data-prediction-explanation="${button.dataset.prediction}"]`,
       );
-      explanation.classList.toggle("hidden");
-      button.textContent = explanation.classList.contains("hidden")
-        ? "Explain this code"
-        : "Hide code explanation";
+      toggleCodeExplanation(button, explanation, problem.code);
     });
   });
   document.querySelectorAll(".load-prediction").forEach((button) => {
@@ -373,11 +335,11 @@ function loadLesson(index) {
         const explanation = $("lesson-content").querySelector(
           `[data-explanation="${sectionIndex}"]`,
         );
-        explanation.innerHTML = explainCode(l.sections[sectionIndex].code);
-        explanation.classList.toggle("hidden");
-        button.textContent = explanation.classList.contains("hidden")
-          ? "Explain this code"
-          : "Hide code explanation";
+        toggleCodeExplanation(
+          button,
+          explanation,
+          l.sections[sectionIndex].code,
+        );
       });
     });
   $("code-editor").value = l.example;
@@ -404,12 +366,57 @@ function escapeHtml(s) {
 }
 let pythonWorker;
 let pythonTimeout;
+let pythonReady = false;
+let pythonRunning = false;
+let pythonRunId = 0;
+let pythonTaskMode;
+let pythonTaskTarget;
+let pythonTaskButton;
+function disposePythonWorker() {
+  if (pythonWorker) pythonWorker.terminate();
+  pythonWorker = null;
+  pythonReady = false;
+}
 function stopPythonRun() {
   if (pythonTimeout) clearTimeout(pythonTimeout);
   pythonTimeout = null;
-  if (pythonWorker) pythonWorker.terminate();
-  pythonWorker = null;
+  const explanationButton = pythonTaskButton;
+  if (pythonRunning) disposePythonWorker();
+  pythonRunning = false;
   $("run-code").disabled = false;
+  if (explanationButton) {
+    explanationButton.disabled = false;
+    explanationButton.textContent = pythonTaskTarget?.classList.contains("hidden")
+      ? "Explain this code"
+      : "Hide code explanation";
+  }
+  pythonTaskMode = null;
+  pythonTaskTarget = null;
+  pythonTaskButton = null;
+}
+function finishPythonRun() {
+  if (pythonTimeout) clearTimeout(pythonTimeout);
+  pythonTimeout = null;
+  pythonRunning = false;
+  $("run-code").disabled = false;
+  if (pythonTaskButton) {
+    pythonTaskButton.disabled = false;
+    pythonTaskButton.textContent = "Hide code explanation";
+  }
+}
+function toggleCodeExplanation(button, target, code) {
+  if (!target.classList.contains("hidden")) {
+    if (pythonTaskMode === "explain" && pythonTaskTarget === target) {
+      stopPythonRun();
+    }
+    target.classList.add("hidden");
+    button.textContent = "Explain this code";
+    return;
+  }
+
+  target.classList.remove("hidden");
+  target.textContent = "Starting Python to trace each line and its output…";
+  startPythonTask(code, "explain", target, button);
 }
 function showPythonResult(output, error = "") {
   const limitNotice =
@@ -452,52 +459,151 @@ $("activation-form").addEventListener("submit", async (e) => {
     button.disabled = false;
   }
 });
-$("run-code").addEventListener("click", () => {
-  const code = $("code-editor").value;
+function ensurePythonWorker() {
+  if (pythonWorker) return pythonWorker;
+
+  pythonWorker = new Worker("/assets/js/python-worker.js");
+  const worker = pythonWorker;
+  worker.addEventListener("message", (event) => {
+    if (worker !== pythonWorker || event.data.runId !== pythonRunId) return;
+    if (event.data.status === "ready") {
+      pythonReady = true;
+      clearTimeout(pythonTimeout);
+      if (pythonTaskMode === "explain") {
+        pythonTaskTarget.textContent =
+          "Tracing each line and collecting the exact output…";
+      } else {
+        $("code-output").textContent = "Running Python…";
+      }
+      pythonTimeout = setTimeout(() => {
+        const mode = pythonTaskMode;
+        const target = pythonTaskTarget;
+        stopPythonRun();
+        if (mode === "explain" && target) {
+          target.innerHTML =
+            "<p>The explanation timed out while running this example. Check for an endless loop or try explaining a smaller snippet.</p>";
+        } else {
+          $("code-output").textContent =
+            "Execution stopped after 30 seconds. Check your code for an endless loop.";
+        }
+      }, 30_000);
+      return;
+    }
+
+    const mode = pythonTaskMode;
+    const target = pythonTaskTarget;
+    finishPythonRun();
+    pythonTaskMode = null;
+    pythonTaskTarget = null;
+    pythonTaskButton = null;
+    if (event.data.status === "error" && !pythonReady) {
+      disposePythonWorker();
+    }
+    if (mode === "explain") {
+      let trace;
+      try {
+        trace = JSON.parse(event.data.explanation || "{}");
+      } catch (error) {
+        trace = {
+          error: `Could not read the explanation result: ${error.message}`,
+        };
+      }
+      if (event.data.status === "error") {
+        trace.error = event.data.error;
+      }
+      trace.extraOutput = event.data.output;
+      target.innerHTML = renderCodeExplanation(
+        target.dataset.sourceCode,
+        trace,
+      );
+    } else {
+      showPythonResult(event.data.output, event.data.error);
+    }
+  });
+  worker.addEventListener("error", (event) => {
+    if (worker !== pythonWorker) return;
+    const mode = pythonTaskMode;
+    const target = pythonTaskTarget;
+    stopPythonRun();
+    disposePythonWorker();
+    const errorMessage = event.error?.message || event.message;
+    if (mode === "explain" && target) {
+      target.innerHTML = `<p>${escapeHtml(
+        errorMessage
+          ? `Python could not trace this code: ${errorMessage}`
+          : "Python could not start to trace this code. Check your connection and try again.",
+      )}</p>`;
+    } else {
+      $("code-output").textContent =
+        errorMessage
+          ? `Python runner failed to start: ${errorMessage}`
+          : "Python runner failed to start. The browser could not load the Python worker; check your connection and reload the page.";
+    }
+  });
+  return pythonWorker;
+}
+function startPythonTask(code, mode, target = null, button = null) {
   if (code.length > 50_000) {
-    $("code-output").textContent =
-      "Code is too long to run. The maximum size is 50,000 characters.";
+    if (mode === "explain" && target) {
+      target.innerHTML =
+        "<p>This example is too long to explain. The maximum size is 50,000 characters.</p>";
+    } else {
+      $("code-output").textContent =
+        "Code is too long to run. The maximum size is 50,000 characters.";
+    }
     return;
   }
 
   stopPythonRun();
-  $("run-code").disabled = true;
-  $("code-output").textContent = "Starting Python…";
+  pythonTaskMode = mode;
+  pythonTaskTarget = target;
+  pythonTaskButton = button;
+  pythonRunning = true;
+  if (mode === "explain") {
+    target.dataset.sourceCode = code;
+    button.disabled = true;
+    button.textContent = "Explaining code…";
+  } else {
+    $("run-code").disabled = true;
+    $("code-output").textContent = "Starting Python…";
+  }
   try {
-    pythonWorker = new Worker("/assets/js/python-worker.js");
+    const runId = ++pythonRunId;
+    const worker = ensurePythonWorker();
+    const waitingForRuntime = !pythonReady;
     pythonTimeout = setTimeout(() => {
+      const currentMode = pythonTaskMode;
+      const currentTarget = pythonTaskTarget;
       stopPythonRun();
-      $("code-output").textContent =
-        "Python could not start within 90 seconds. Check your connection and try again.";
-    }, 90_000);
-    pythonWorker.addEventListener("message", (event) => {
-      if (event.data.status === "ready") {
-        clearTimeout(pythonTimeout);
-        $("code-output").textContent = "Running Python…";
-        pythonTimeout = setTimeout(() => {
-          stopPythonRun();
-          $("code-output").textContent =
-            "Execution stopped after 30 seconds. Check your code for an endless loop.";
-        }, 30_000);
-        return;
+      if (currentMode === "explain" && currentTarget) {
+        currentTarget.innerHTML =
+          "<p>Python took too long to start. Check your connection and try explaining again.</p>";
+      } else {
+        $("code-output").textContent = waitingForRuntime
+          ? "Python could not start within 90 seconds. Check your connection and try again."
+          : "Execution stopped after 30 seconds. Check your code for an endless loop.";
       }
-      stopPythonRun();
-      showPythonResult(event.data.output, event.data.error);
-    });
-    pythonWorker.addEventListener("error", (event) => {
-      stopPythonRun();
-      $("code-output").textContent =
-        `Python runner failed to start: ${event.message}`;
-    });
+    }, waitingForRuntime ? 90_000 : 30_000);
     pythonWorker.postMessage({
       code,
       input: $("program-input").value,
+      mode,
+      runId,
     });
   } catch (error) {
     stopPythonRun();
-    $("code-output").textContent =
-      `Python runner could not start: ${error.message}`;
+    if (mode === "explain" && target) {
+      target.innerHTML = `<p>${escapeHtml(
+        `Python could not trace this code: ${error.message}`,
+      )}</p>`;
+    } else {
+      $("code-output").textContent =
+        `Python runner could not start: ${error.message}`;
+    }
   }
+}
+$("run-code").addEventListener("click", () => {
+  startPythonTask($("code-editor").value, "run");
 });
 $("reset-code").addEventListener("click", () => {
   stopPythonRun();

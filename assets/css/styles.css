@@ -353,6 +353,28 @@ h1 {
   font-size: 13px;
   margin-top: 3px;
 }
+.code-explanation li span strong {
+  color: var(--text);
+}
+.explanation-output {
+  display: block;
+  margin-top: 5px;
+}
+.explanation-output code {
+  white-space: pre-wrap;
+}
+.explanation-summary,
+.explanation-error,
+.explanation-truncated {
+  margin: 10px 0;
+  overflow-wrap: anywhere;
+}
+.explanation-summary pre {
+  white-space: pre-wrap;
+}
+.explanation-error {
+  color: var(--danger, #a12622);
+}
 .callout {
   background: #f1f6ff;
   border-left: 3px solid var(--accent);

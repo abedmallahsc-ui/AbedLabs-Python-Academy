@@ -131,7 +131,7 @@ npm test
 4. **Applied Python projects (lessons 21–24):** dates and time, HTTP/API concepts, a persistent command-line task manager, and a data-report capstone.
 5. **Intermediate foundations (lessons 25–39):** slicing patterns, reverse steps, slice assignment, and boundary cases; enumerate, zip, and unpacking; sorting and searching; algorithm complexity; iterators and generators; lambda, map, and filter; regular expressions; CSV; SQLite; command-line interfaces; virtual environments and dependencies; context managers and decorators; type hints and dataclasses; practical HTTP APIs; and Python security.
 
-The course contains **117 programming tasks, 390 MCQs, and 390 output-prediction problems**. Every lesson has ten questions of each assessment type. Code examples, solutions, and prediction snippets can be loaded into the in-browser editor; the line-by-line explanation control offers an additional learning aid.
+The course contains **585 practice challenges, 585 MCQs, and 386 output-prediction problems**. Every lesson has 15 distinct hands-on challenges and 15 distinct knowledge-check questions, alongside its separate output-prediction practice. Code examples, worked examples, and prediction snippets can be loaded into the in-browser editor; the line-by-line explanation control offers an additional learning aid.
 
 ## Python runner safety and limitations
 

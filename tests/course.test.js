@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  buildLessonExercises,
   buildLessonPredictions,
   buildLessonQuizzes,
 } from "../assets/js/assessments.js";
@@ -36,7 +37,7 @@ test("course contains 39 ordered lessons with distinct versioned progress IDs", 
   );
 });
 
-test("every lesson provides explanations, examples, and three coding tasks", () => {
+test("every lesson provides explanations, examples, and 15 practice challenges", () => {
   for (const lesson of allLessons) {
     const guide = lessonGuides[lesson.number];
     assert.ok(lesson.title.trim(), `${lesson.id} needs a title`);
@@ -73,8 +74,13 @@ test("every lesson provides explanations, examples, and three coding tasks", () 
       assert.ok(exercise.solution.trim(), `${exercise.title} needs a solution`);
     }
 
-    const quizzes = buildLessonQuizzes(lesson);
-    assert.equal(quizzes.length, 10, `${lesson.id} needs ten MCQs`);
+    const quizzes = buildLessonQuizzes(lesson, guide);
+    assert.equal(quizzes.length, 15, `${lesson.id} needs 15 MCQs`);
+    assert.equal(
+      new Set(quizzes.map((quiz) => quiz.q)).size,
+      15,
+      `${lesson.id} needs 15 distinct MCQ questions`,
+    );
     for (const quiz of quizzes) {
       assert.ok(quiz.q.trim(), `${lesson.id} has an empty question`);
       assert.equal(quiz.options.length, 3, `${quiz.q} needs three choices`);
@@ -86,15 +92,77 @@ test("every lesson provides explanations, examples, and three coding tasks", () 
         `${quiz.q} has an invalid correct answer`,
       );
       assert.ok(quiz.why.trim(), `${quiz.q} needs an explanation`);
+      assert.ok(
+        !quiz.q.toLowerCase().includes(quiz.why.toLowerCase()),
+        `${quiz.q} should not reveal its answer in the question`,
+      );
+    }
+
+    const practice = buildLessonExercises(lesson, guide);
+    assert.equal(practice.length, 15, `${lesson.id} needs 15 practice challenges`);
+    assert.equal(
+      new Set(practice.map((exercise) => exercise.task)).size,
+      15,
+      `${lesson.id} needs distinct practice prompts`,
+    );
+    assert.equal(
+      new Set(practice.map((exercise) => exercise.objective)).size,
+      15,
+      `${lesson.id} needs a unique objective for every challenge`,
+    );
+    for (const exercise of practice) {
+      assert.ok(exercise.title.trim(), `${lesson.id} has an untitled challenge`);
+      assert.ok(exercise.task.trim(), `${exercise.title} needs instructions`);
+      assert.ok(exercise.starter.trim(), `${exercise.title} needs starter code`);
+      assert.ok(exercise.hint.trim(), `${exercise.title} needs a hint`);
+      assert.ok(
+        exercise.hint.includes(exercise.objective),
+        `${exercise.title} hint should address its objective`,
+      );
+      assert.ok(exercise.solution.trim(), `${exercise.title} needs a worked example`);
+      if (exercise.referenceExample) {
+        const hintedLine = exercise.hint.match(
+          /Look at `([^`]+)` in the starter/,
+        );
+        assert.ok(hintedLine, `${exercise.title} needs a code-specific hint`);
+        assert.ok(
+          exercise.starter.includes(hintedLine[1]),
+          `${exercise.title} hint should refer to a line in its starter`,
+        );
+        assert.match(
+          exercise.hint,
+          /then|and|so you can|compare/i,
+          `${exercise.title} hint should give an actionable next step`,
+        );
+      }
     }
 
     const predictions = buildLessonPredictions(lesson);
-    assert.equal(predictions.length, 10, `${lesson.id} needs ten output problems`);
+    assert.ok(
+      predictions.length >= 9 && predictions.length <= 10,
+      `${lesson.id} needs 9 or 10 distinct output problems`,
+    );
     assert.equal(
       new Set(predictions.map((problem) => problem.code)).size,
-      10,
-      `${lesson.id} needs ten distinct output snippets`,
+      predictions.length,
+      `${lesson.id} needs distinct output snippets`,
     );
+    if (!(lesson.predictProblems?.length >= 10)) {
+      const sourceExamples = new Set(
+        [
+          lesson.example,
+          ...lesson.sections.map((section) => section.code),
+          ...lesson.exercises.flatMap((exercise) => [
+            exercise.solution,
+            exercise.starter,
+          ]),
+        ].filter((code) => code?.trim()),
+      );
+      assert.ok(
+        predictions.every((problem) => sourceExamples.has(problem.code)),
+        `${lesson.id} output problems should use standalone lesson or exercise snippets`,
+      );
+    }
     for (const problem of predictions) {
       assert.ok(problem.title.trim(), `${lesson.id} has an untitled prediction`);
       assert.ok(problem.code.trim(), `${problem.title} needs code`);
@@ -149,13 +217,15 @@ test("string and list chapters teach slicing before the dedicated slicing chapte
   );
 });
 
-test("course includes 117 coding tasks, 390 quizzes, and 390 output problems", () => {
+test("course includes 585 coding tasks, 585 MCQs, and distinct output problems", () => {
   const challengeCount = allLessons.reduce(
-    (total, lesson) => total + lesson.exercises.length,
+    (total, lesson) =>
+      total + buildLessonExercises(lesson, lessonGuides[lesson.number]).length,
     0,
   );
   const quizCount = allLessons.reduce(
-    (total, lesson) => total + buildLessonQuizzes(lesson).length,
+    (total, lesson) =>
+      total + buildLessonQuizzes(lesson, lessonGuides[lesson.number]).length,
     0,
   );
   const predictionCount = allLessons.reduce(
@@ -163,7 +233,77 @@ test("course includes 117 coding tasks, 390 quizzes, and 390 output problems", (
     0,
   );
 
-  assert.equal(challengeCount, 117);
-  assert.equal(quizCount, 390);
-  assert.equal(predictionCount, 390);
+  assert.equal(challengeCount, 585);
+  assert.equal(quizCount, 585);
+  assert.equal(predictionCount, 386);
+});
+
+test("course-wide MCQ questions and practice prompts are unique", () => {
+  const questions = allLessons.flatMap((lesson) =>
+    buildLessonQuizzes(lesson, lessonGuides[lesson.number]).map((quiz) =>
+      quiz.q.trim().toLowerCase(),
+    ),
+  );
+  const practiceTasks = allLessons.flatMap((lesson) =>
+    buildLessonExercises(lesson, lessonGuides[lesson.number]).map((exercise) =>
+      exercise.task.trim().toLowerCase(),
+    ),
+  );
+
+  assert.equal(new Set(questions).size, questions.length);
+  assert.equal(new Set(practiceTasks).size, practiceTasks.length);
+});
+
+test("challenge hints give objective-specific next steps", () => {
+  const firstLesson = lessons.find((lesson) => lesson.number === "01");
+  const firstPractice = buildLessonExercises(
+    firstLesson,
+    lessonGuides[firstLesson.number],
+  );
+  assert.equal(firstPractice.length, 15);
+  assert.notEqual(firstPractice[5].objective, firstPractice[11].objective);
+  assert.match(firstPractice[11].objective, /separate .*lines/i);
+  assert.match(firstPractice[11].task, /end=" "/);
+  assert.match(firstPractice[11].hint, /same line|separate lines/i);
+
+  const slicing = allLessons.find((lesson) => lesson.number === "25");
+  const slicingPractice = buildLessonExercises(
+    slicing,
+    lessonGuides[slicing.number],
+  );
+  assert.match(
+    slicingPractice.find((exercise) => /start:stop:step/.test(exercise.objective))
+      .hint,
+    /start, stop, or step/i,
+  );
+
+  const apiLesson = allLessons.find((lesson) => lesson.number === "22");
+  const apiPractice = buildLessonExercises(
+    apiLesson,
+    lessonGuides[apiLesson.number],
+  );
+  assert.match(
+    apiPractice.find(
+      (exercise) => /timeout/i.test(exercise.objective),
+    ).hint,
+    /timeout/i,
+  );
+  assert.match(
+    apiPractice.find((exercise) => /timeout/i.test(exercise.objective)).hint,
+    /Typical workflow with an HTTP client/,
+  );
+
+  const loops = allLessons.find((lesson) => lesson.number === "07");
+  assert.match(
+    buildLessonExercises(loops, lessonGuides[loops.number]).find((exercise) =>
+      /loop/i.test(exercise.objective),
+    ).hint,
+    /iteration|loop boundary/i,
+  );
+  assert.match(
+    buildLessonExercises(loops, lessonGuides[loops.number]).find((exercise) =>
+      /break, continue/i.test(exercise.objective),
+    ).hint,
+    /break.*continue.*loop else/i,
+  );
 });
