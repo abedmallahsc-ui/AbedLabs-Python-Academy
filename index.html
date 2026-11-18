@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#101827" />
+    <title>Python Interactive Academy | ABED LABS</title>
+    <link rel="stylesheet" href="/assets/css/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/"
+        ><span class="brand-mark">A</span
+        ><span>ABED LABS <small>PYTHON ACADEMY</small></span></a
+      >
+      <div class="top-actions">
+        <span id="connection-status" class="status">Checking access…</span
+        ><button id="logout-btn" class="ghost hidden">Lock</button>
+      </div>
+    </header>
+    <main>
+      <section id="activation-screen" class="gate hidden">
+        <div class="gate-card">
+          <p class="eyebrow">ABED LABS · DIGITAL LEARNING</p>
+          <h1>Learn Python, step by step.</h1>
+          <p class="muted">
+            Enter the activation code you received after purchasing the academy.
+            Each license can be activated on one device.
+          </p>
+          <form id="activation-form">
+            <label for="license-code">Activation code</label
+            ><input
+              id="license-code"
+              autocomplete="off"
+              placeholder="ABCD-1234-EFGH"
+              required
+            /><button class="primary" type="submit">
+              Activate this device
+            </button>
+            <p id="activation-error" class="error" role="alert"></p>
+          </form>
+          <p class="fine">
+            Your activation is linked to this browser. Contact ABED LABS if you
+            replace your device.
+          </p>
+        </div>
+      </section>
+      <section id="academy" class="layout hidden">
+        <aside class="sidebar">
+          <div class="course-heading">
+            <span class="eyebrow">YOUR COURSE</span>
+            <h2>Python from Zero</h2>
+            <p class="muted">Beginner → Intermediate</p>
+            <p id="course-count" class="course-count">39 lessons</p>
+          </div>
+          <div id="lesson-list" class="lesson-list"></div>
+          <div class="progress-card">
+            <div class="progress-label">
+              <span>Course progress</span><strong id="progress-text">0%</strong>
+            </div>
+            <div class="progress-track"><span id="progress-bar"></span></div>
+          </div>
+        </aside>
+        <article class="lesson-panel">
+          <div class="lesson-meta">
+            <span id="lesson-number">LESSON 01</span
+            ><span id="lesson-complete" class="pill">Not completed</span>
+          </div>
+          <h1 id="lesson-title"></h1>
+          <p id="lesson-intro" class="lead"></p>
+          <div id="lesson-guide"></div>
+          <div id="lesson-content" class="lesson-content"></div>
+          <section class="practice">
+            <div class="practice-head">
+              <div>
+                <span class="eyebrow">PRACTICE</span>
+                <h2>Try it yourself</h2>
+              </div>
+              <span class="muted">Python editor</span>
+            </div>
+            <div id="practice-list" class="practice-list"></div>
+            <section class="prediction-practice" aria-labelledby="prediction-title">
+              <span class="eyebrow">OUTPUT PREDICTION</span>
+              <h3 id="prediction-title">Predict, then check</h3>
+              <p class="muted">
+                Trace each program before running it. Reveal the worked answer
+                where available, or load the snippet into the editor to verify.
+              </p>
+              <div id="prediction-list" class="prediction-list"></div>
+            </section>
+            <h3 class="editor-title">Practice editor</h3>
+            <label class="sr-only" for="code-editor">Python code editor</label>
+            <textarea id="code-editor" spellcheck="false">
+print("Hello, Python!")</textarea
+            >
+            <label for="program-input">Program input</label>
+            <textarea
+              id="program-input"
+              class="program-input"
+              spellcheck="false"
+              placeholder="One line per input() call"
+              aria-describedby="program-input-help"
+            ></textarea>
+            <p id="program-input-help" class="fine">
+              Provide one input value per line for programs that use input().
+            </p>
+            <div class="editor-actions">
+              <button id="run-code" class="primary" type="button">
+                Run code
+              </button>
+              <button id="reset-code" class="ghost" type="button">
+                Reset example
+              </button>
+            </div>
+            <pre
+              id="code-output"
+              class="output"
+              role="status"
+              aria-live="polite"
+            >
+Your output will appear here.</pre
+            >
+          </section>
+          <section id="quiz-section" class="quiz"></section>
+          <div class="lesson-footer">
+            <button id="previous-lesson" class="ghost">← Previous</button
+            ><button id="complete-lesson" class="primary">
+              Mark complete & continue →
+            </button>
+          </div>
+        </article>
+      </section>
+    </main>
+    <footer>
+      © <span id="year"></span> ABED LABS · Learn by understanding, not
+      memorizing.
+    </footer>
+    <script type="module" src="/assets/js/app.js"></script>
+  </body>
+</html>

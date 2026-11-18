@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Academy Admin | ABED LABS</title>
+    <link rel="stylesheet" href="/assets/css/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/">ABED LABS <small>ACADEMY ADMIN</small></a>
+    </header>
+    <main>
+      <section class="gate">
+        <div class="gate-card">
+          <p class="eyebrow">PRIVATE ADMIN AREA</p>
+          <h1>License management</h1>
+          <p class="muted">
+            Create activation codes and reset a customer's registered device.
+          </p>
+          <form id="login-form">
+            <label for="email">Admin email</label>
+            <input id="email" type="email" autocomplete="username" required />
+            <label for="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+            <button id="sign-in" class="primary" type="submit">Sign in</button>
+          </form>
+          <p id="message" class="error" role="alert"></p>
+          <section id="admin-tools" class="hidden">
+            <button id="sign-out" class="ghost" type="button">Sign out</button>
+            <label for="customer">Customer label (optional)</label>
+            <input
+              id="customer"
+              placeholder="Customer name or order reference"
+            />
+            <button id="create" class="primary" type="button">
+              Create license
+            </button>
+            <div id="new-code" class="callout hidden"></div>
+            <h2>Existing licenses</h2>
+            <button id="refresh" class="ghost" type="button">
+              Refresh licenses
+            </button>
+            <div id="licenses"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/assets/js/admin.js"></script>
+  </body>
+</html>

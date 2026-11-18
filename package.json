@@ -1,0 +1,11 @@
+{
+  "name": "abed-labs-python-academy",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}
