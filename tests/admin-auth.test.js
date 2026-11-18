@@ -167,3 +167,26 @@ test("admin configuration publishes only the public Supabase settings", () => {
   assert.equal("SUPABASE_SERVICE_ROLE_KEY" in res.body, false);
   assert.equal(res.headers["Cache-Control"], "no-store");
 });
+
+test("admin configuration reports which Vercel settings are missing", () => {
+  const originalUrl = process.env.SUPABASE_URL;
+  const originalAnonKey = process.env.SUPABASE_ANON_KEY;
+  delete process.env.SUPABASE_URL;
+  delete process.env.SUPABASE_ANON_KEY;
+
+  try {
+    const res = response();
+    configHandler({ method: "GET" }, res);
+
+    assert.equal(res.statusCode, 500);
+    assert.equal(
+      res.body.error,
+      "Admin sign-in is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel, then redeploy.",
+    );
+  } finally {
+    if (originalUrl === undefined) delete process.env.SUPABASE_URL;
+    else process.env.SUPABASE_URL = originalUrl;
+    if (originalAnonKey === undefined) delete process.env.SUPABASE_ANON_KEY;
+    else process.env.SUPABASE_ANON_KEY = originalAnonKey;
+  }
+});

@@ -177,6 +177,10 @@ async function refresh() {
 $("login-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const button = $("sign-in");
+  if (!config) {
+    showMessage("Admin sign-in is not ready. Reload the page and try again.");
+    return;
+  }
   button.disabled = true;
   showMessage("");
   try {
@@ -250,7 +254,20 @@ async function initialize() {
     const response = await fetch("/api/admin/config", {
       cache: "no-store",
     });
-    config = await readResponse(response);
+    const configResponse = await readResponse(response);
+    if (
+      typeof configResponse.supabaseUrl !== "string" ||
+      typeof configResponse.supabaseAnonKey !== "string" ||
+      !configResponse.supabaseUrl ||
+      !configResponse.supabaseAnonKey
+    ) {
+      throw new Error(
+        "Admin sign-in configuration is incomplete. Check SUPABASE_URL and SUPABASE_ANON_KEY in Vercel, then redeploy.",
+      );
+    }
+    config = configResponse;
+    $("sign-in").disabled = false;
+    $("sign-in").textContent = "Sign in";
 
     const storedSession = sessionStorage.getItem(SESSION_KEY);
     if (storedSession) {
@@ -268,6 +285,8 @@ async function initialize() {
     }
   } catch (error) {
     saveSession(null);
+    $("sign-in").disabled = true;
+    $("sign-in").textContent = "Unavailable";
     showMessage(error.message);
   }
 }
